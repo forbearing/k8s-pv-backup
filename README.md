@@ -9,13 +9,12 @@
 ### [Cumulative Incremential Backup] vs [Differential Incremental Backup]
 
 ```
-Cumulative Incremental:
-		This will backup all changes this the last Full backup.
-Differential Incremental:
-		This will backup all changes since last backup - Full or Incremental.
+Cumulative Incremental:   This will backup all changes this the last Full backup.
+Differential Incremental: This will backup all changes since last backup - Full or Incremental.
+总结来说就是：
+  - Cumulative Incremental:  更占存储空间，但恢复备份的速度更快
+  - Differential Incremental: 占用存储空间相对少，当然恢复备份的速度想对更慢
 ```
-
-具体以后介绍
 
 ### 具体如何恢复，稍等下再写
 
