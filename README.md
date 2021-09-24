@@ -17,9 +17,20 @@ Differential Incremental:
 
 具体以后介绍
 
+### 具体如何恢复，稍等下再写
 
+### Jenkins 备份和恢复测试没问题
 
-### 部分截图
+### 后续还会增加更多的备份对象、优化通用备份脚本、给通用备份脚本添新功能
+
+- gitlab、jenkins
+- postgresql、gitlab
+- cassandra、redis
+- 等等
+
+### 以后直接做成 helm 包
+
+### 截图
 
 ![jenkins_backup_kubectl](images/jenkins_backup_kubectl_get.png)
 
