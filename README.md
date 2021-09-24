@@ -34,6 +34,10 @@ Differential Incremental: This will backup all changes since last backup - Full 
 
 ![jenkins_backup_kubectl](images/jenkins_backup_kubectl_get.png)
 
-![jenkins_backup_kubectl_logs](images/jenkins_backup_kubectl_logs.png)
+<img src="images/jenkins_backup_kubectl_logs1.png" alt="jenkins_backup_kubectl_logs" style="zoom:80%;" />
+
+<img src="images/jenkins_backup_kubectl_logs2.png" alt="jenkins_backup_kubectl_logs2" style="zoom:80%;" />
+
+
 
 ![jenkins_backup_tree](images/jenkins_backup_tree.png)
