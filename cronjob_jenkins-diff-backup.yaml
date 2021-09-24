@@ -1,0 +1,78 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: jenkins-diff-backup
+  namespace: devops
+  labels:
+    name: jenkins-diff-backup
+    app: jenkins
+    role: backup
+spec:
+  schedule: "*/1 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            name: jenkins-diff-backup
+            app: jenkins
+            role: backup
+        spec:
+          restartPolicy: Never
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                    - jenkins
+                  - key: role
+                    operator: In
+                    values:
+                    - devops
+                namespaces:
+                - devops
+                topologyKey: kubernetes.io/hostname 
+          containers:
+          - name: jenkins-diff-backup
+            image: registry.cn-shanghai.aliyuncs.com/hybfkuf/k8s-tools:v1.0
+            imagePullPolicy: Always
+            command:
+            - 'bash'
+            - '-c'
+            - '/srv/backup-script.sh'
+            envFrom:
+            - configMapRef:
+                name: jenkins-backup-config
+            env:
+            - name: BACKUP_POLICY
+              value: 'diff'
+            securityContext:
+              privileged: true
+            volumeMounts:
+            - name: backup-script
+              mountPath: /srv
+            - name: jenkins-home
+              mountPath: /jenkins-home
+            - name: backup
+              mountPath: /backup
+          volumes:
+          - name: backup-script
+            configMap:
+              name: backup-script
+              defaultMode: 0700
+          - name: jenkins-home
+            persistentVolumeClaim:
+              claimName: jenkins-home
+              readOnly: true
+          - name: backup
+            nfs:
+              server: 10.240.1.21
+              path: /srv/nfs/cicd
