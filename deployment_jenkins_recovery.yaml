@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins-recovery
+  namespace: devops
+  labels:
+    name: jenkins-recovery
+    app: jenkins
+    role: recovery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: jenkins-recovery
+      app: jenkins
+      role: recovery
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        name: jenkins-recovery
+        app: jenkins
+        role: recovery
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - jenkins
+              - key: role
+                operator: In
+                values:
+                - devops
+            namespaces:
+            - devops
+            topologyKey: kubernetes.io/hostname 
+      containers:
+      - name: jenkins-recovery
+        image: registry.cn-shanghai.aliyuncs.com/hybfkuf/k8s-tools:v1.0
+        imagePullPolicy: Always
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: jenkins-home
+          mountPath: /jenkins-home
+        - name: backup
+          mountPath: /backup
+      volumes:
+      - name: jenkins-home
+        persistentVolumeClaim:
+          claimName: jenkins-home
+          readOnly: false
+      - name: backup
+        nfs:
+          server: 10.240.1.21
+          path: /srv/nfs/cicd
