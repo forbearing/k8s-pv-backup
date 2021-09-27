@@ -1,0 +1,81 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-full-openldap-data
+  namespace: devops
+  labels:
+    name: backup-full-openldap-data
+    app: openldap
+    role: backup
+    backup-policy: full
+spec:
+  schedule: "40 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            name: backup-full-openldap-data
+            app: openldap
+            role: backup
+            backup-policy: full
+        spec:
+          restartPolicy: Never
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                    - openldap
+                  - key: role
+                    operator: In
+                    values:
+                    - devops
+                namespaces:
+                - devops
+                topologyKey: kubernetes.io/hostname 
+          containers:
+          - name: backup-full-openldap-data
+            image: registry.cn-shanghai.aliyuncs.com/hybfkuf/k8s-tools:v1.0
+            imagePullPolicy: IfNotPresent
+            command:
+            - 'bash'
+            - '-c'
+            - '/srv/backup-script.sh'
+            envFrom:
+            - configMapRef:
+                name: backup-config-openldap-data
+            env:
+            - name: BACKUP_POLICY
+              value: "full"
+            securityContext:
+              privileged: true
+            volumeMounts:
+            - name: backup-script
+              mountPath: /srv
+            - name: openldap-data
+              mountPath: /openldap-data
+            - name: backup
+              mountPath: /backup
+          volumes:
+          - name: backup-script
+            configMap:
+              name: backup-script
+              defaultMode: 0700
+          - name: openldap-data
+            persistentVolumeClaim:
+              claimName: data-openldap-0
+              readOnly: true
+          - name: backup
+            nfs:
+              server: 10.240.1.21
+              #server: 10.250.13.31
+              path: /srv/nfs/cicd
