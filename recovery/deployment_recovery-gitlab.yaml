@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recovery-gitlab
+  namespace: devops
+  labels:
+    name: recovery-gitlab
+    app: gitlab
+    role: recovery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: recovery-gitlab
+      app: gitlab
+      role: recovery
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        name: recovery-gitlab
+        app: gitlab
+        role: recovery
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - gitlab
+              - key: role
+                operator: In
+                values:
+                - devops
+            namespaces:
+            - devops
+            topologyKey: kubernetes.io/hostname 
+      containers:
+      - name: recovery-gitlab
+        image: registry.cn-shanghai.aliyuncs.com/hybfkuf/k8s-tools:v1.0
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: gitlab-data
+          mountPath: /gitlab-data
+        - name: backup
+          mountPath: /backup
+      volumes:
+      - name: gitlab-data
+        persistentVolumeClaim:
+          claimName: gitlab-data
+          readOnly: false
+      - name: backup
+        nfs:
+          server: 10.240.1.21
+          path: /srv/nfs/cicd
+          readOnly: true
