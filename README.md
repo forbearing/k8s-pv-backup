@@ -32,12 +32,13 @@ Differential Incremental: This will backup all changes since last backup - Full 
 
 ### 截图
 
-![jenkins_backup_kubectl](images/jenkins_backup_kubectl_get.png)
+![jenkins_backup_kubectl](docs/pics/jenkins_backup_kubectl_get.png)
 
-<img src="images/jenkins_backup_kubectl_logs1.png" alt="jenkins_backup_kubectl_logs" style="zoom:80%;" />
+<img src="docs/pics/jenkins_backup_kubectl_logs1.png" alt="jenkins_backup_kubectl_logs" style="zoom:80%;" />
 
-<img src="images/jenkins_backup_kubectl_logs2.png" alt="jenkins_backup_kubectl_logs2" style="zoom:80%;" />
+<img src="docs/pics/jenkins_backup_kubectl_logs2.png" alt="jenkins_backup_kubectl_logs2" style="zoom:80%;" />
 
 
 
-![jenkins_backup_tree](images/jenkins_backup_tree.png)
+![jenkins_backup_tree](docs/pics/jenkins_backup_tree.png)
+
