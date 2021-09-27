@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recovery-openldap
+  namespace: devops
+  labels:
+    name: recovery-openldap
+    app: openldap
+    role: recovery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: recovery-openldap
+      app: openldap
+      role: recovery
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        name: recovery-openldap
+        app: openldap
+        role: recovery
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - openldap
+              - key: role
+                operator: In
+                values:
+                - devops
+            namespaces:
+            - devops
+            topologyKey: kubernetes.io/hostname 
+      containers:
+      - name: recovery-openldap
+        image: registry.cn-shanghai.aliyuncs.com/hybfkuf/k8s-tools:v1.0
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: openldap-data
+          mountPath: /openldap-data
+        - name: openldap-config
+          mountPath: /openldap-config
+        - name: backup
+          mountPath: /backup
+      volumes:
+      - name: openldap-data
+        persistentVolumeClaim:
+          claimName: data-openldap-0
+          readOnly: false
+      - name: openldap-config
+        persistentVolumeClaim:
+          claimName: config-openldap-0
+          readOnly: false
+      - name: backup
+        nfs:
+          server: 10.240.1.21
+          path: /srv/nfs/cicd
+          readOnly: true
