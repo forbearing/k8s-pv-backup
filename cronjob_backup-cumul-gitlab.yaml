@@ -10,7 +10,7 @@ metadata:
     role: backup
     backup-policy: cumul
 spec:
-  schedule: "0 */3 * * *"
+  schedule: "0 */6 * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
