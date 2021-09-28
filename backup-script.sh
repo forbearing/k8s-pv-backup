@@ -30,34 +30,33 @@ backup_from="${BACKUP_FROM}"
 backup_to="${BACKUP_TO}"
 full_backup_count="${FULL_BACKUP_COUNT}"
 
+# lock:                     简单的文件锁
 # full_flag:                记录了最新的一个全量备份的路径
 # full_backup_path:         全量备份的路径
 # full_backup_snap_name:    全量备份的 snapshot 文件名，详解请查看 man tar 的 -g 选项
 # full_backup_file_name:    全量备份的文件名
-# lock:                     简单的文件锁
-full_flag="${backup_to}"/"${backup_target}"/.full
-#full_backup_path="$(cat ${backup_to}/${backup_target}/.full 2> /dev/null)"
-full_backup_path="$(cat ${full_flag} 2> /dev/null)"
-full_backup_snap_name="${full_backup_path}"/"${backup_target}"-"full.sngz"
-full_backup_file_name="${full_backup_path}"/"${backup_target}"-"full.tgz"
-lock="${backup_to}"/"${backup_target}"/.lock
+lock=""
+full_flag=""
+full_backup_path=""
+full_backup_snap_name=""
+full_backup_file_name=""
 
 # cumul_backup_path:        累计增量备份的路径（默认等同于全量备份路径）
-# cumul_backup_snap_name    累计增量备份 snapshot 文件名，详解请查看 man tar 的 -g 选项
-# cumul_backup_file_name    累计增量备份文件名
-cumul_backup_path="${full_backup_path}"
-cumul_backup_snap_name="${cumul_backup_path}"/"${backup_target}"-"cumul.sngz"
-cumul_backup_file_name="${cumul_backup_path}"/"${backup_target}"-"cumul"-$(date +%d)-$(date +%H%M)".tgz"
+# cumul_backup_snap_name:   累计增量备份 snapshot 文件名，详解请查看 man tar 的 -g 选项
+# cumul_backup_file_name:   累计增量备份文件名
+cumul_backup_path=""
+cumul_backup_snap_name=""
+cumul_backup_file_name=""
 
 # diff_backup_path:         差异增量备份的路径（默认等同于全量备份路径）
-# diff_backup_snap_name     差异增量备份 snapshot 文件名，详解请查看 man tar 的 -g 选项
-# diff_backup_file_name     差异增量备份文件名
-diff_backup_path="${full_backup_path}"
-diff_backup_snap_name="${diff_backup_path}"/"${backup_target}"-"diff.sngz"
-diff_backup_file_name="${diff_backup_path}"/"${backup_target}"-"diff"-$(date +%d)-$(date +%H%M)".tgz"
+# diff_backup_snap_name:    差异增量备份 snapshot 文件名，详解请查看 man tar 的 -g 选项
+# diff_backup_file_name:    差异增量备份文件名
+diff_backup_path=""
+diff_backup_snap_name=""
+diff_backup_file_name=""
 
 
-# 依赖于 flock 制作但文件锁，在 pod 中不生效.
+# 依赖于 flock 制作的文件锁，在 pod 中不生效.
 LOCKFILE="/var/lock/backup-script"
 LOCKFD=99
  
@@ -86,14 +85,16 @@ unlock()            { _lock u; }   # drop a lock
 function full_backup {
     echo -e "\n========== BEGIN ${BACKUP_TARGET^} Full Backup ===========\n"
 
+    lock="${backup_to}"/"${backup_target}"/.lock
     full_flag="${backup_to}"/"${backup_target}"/.full
     full_backup_path="${backup_to}/${backup_target}/${backup_target}-$(date +%Y%m%d-%H%M)"
     full_backup_snap_name="${full_backup_path}/${backup_target}-full.sngz"
     full_backup_file_name="${full_backup_path}/${backup_target}-full.tgz"
-    lock="${backup_to}"/"${backup_target}"/.lock
 
     # 1. 开始进行全量备份前加锁，目的是在全量备份的过程中，全量备份和增量备份不要同时进行
-    mkdir -p "${backup_to}"/"${backup_target}"
+    if [[ ! -d "${backup_to}"/"${backup_target}" ]]; then
+        rm -rf "${backup_to}"/"${backup_target}"
+        mkdir -p "${backup_to}"/"${backup_target}"; fi
     touch "${lock}"
     chattr +i "${lock}" &> /dev/null
 
@@ -147,28 +148,29 @@ function full_backup {
 function cumul_backup {
     echo -e "\n========== BEGIN ${BACKUP_TARGET^} Cumulative Incremental Backup ===========\n"
 
+    sleep 5  # sleep 的目的是为了当 full backup 和 cumul backup 同时运行时, cumul backup 总是晚于 full backup 运行
+    lock="${backup_to}"/"${backup_target}"/.lock # 简单的文件锁，cumul_backup 通过文件所来确认 full_backup 是否正在运行
     # 1. 检测锁是否存在，如果锁存在，则说明全量备份正在进行，睡眠等待全量备份结束继续备份
-    sleep 5         # sleep 的目的是为了当 full backup 和 cumul backup 同时运行时, cumul backup 总是晚于 full backup 运行
     while true; do
         if ls "${lock}" &> /dev/null; then 
             echo "full backup is in progress, waiting full backup finished..."
             sleep 10; 
-        else 
-            # 基于新的全量备份进行增量备份
-            full_flag="${backup_to}"/"${backup_target}"/.full
-            full_backup_path="$(cat ${full_flag} 2> /dev/null)"
-            cumul_backup_path="${full_backup_path}"
-            cumul_backup_snap_name="${cumul_backup_path}"/"${backup_target}"-"cumul.sngz"
-            cumul_backup_file_name="${cumul_backup_path}"/"${backup_target}"-"cumul"-$(date +%d)-$(date +%H%M)".tgz"
-            break
-        fi
+        else break; fi
     done
+    # cumul_backup 通过 full_backup_snap_name 来确认全量备份是否存在
+    # cumul_backup 依赖 full_backup_snap_name 来比对时间戳而进行增量备份
+    full_flag="${backup_to}"/"${backup_target}"/.full
+    full_backup_path="$(cat ${full_flag} 2> /dev/null)"
+    full_backup_snap_name="${full_backup_path}"/"${backup_target}"-"full.sngz"
+    cumul_backup_path="${full_backup_path}"
+    cumul_backup_snap_name="${cumul_backup_path}"/"${backup_target}"-"cumul.sngz"
+    cumul_backup_file_name="${cumul_backup_path}"/"${backup_target}"-"cumul"-$(date +%d)-$(date +%H%M)".tgz"
 
     # 2. 检测全量备份是否存在如果不存在，直接跳过备份
     if [[ ! -e "${full_backup_snap_name}" ]]; then
         echo "full backup not exist, skip..."
     else
-        # 差异增量备份和累计增量备份不同，差异增量备份只拷贝一次，累计增量备份开始备份之前都要拷贝一次
+        # cumul_backup 和 diff_backup 不同, cumul_backup 每次备份都要拷贝，diff_backup 只需要拷贝一次
         cp "${full_backup_snap_name}" "${cumul_backup_snap_name}"
 
         # 3. 开始备份
@@ -179,7 +181,7 @@ function cumul_backup {
         # 4. 列出所有的增量备份文件
         echo -e "\n***** All Cumulative Incremental Backup File *****"
         ls -lh --time-style=+%Y/%m/%d-%H:%M \
-            "${diff_backup_path}"/"${backup_target}"-cumul-* | \
+            "${cumul_backup_path}"/"${backup_target}"-cumul-* | \
             awk -F ' ' '{printf "%s  %s  %s\n", $5,$6,$7}'
     fi
     echo -e "\n========== END ${BACKUP_TARGET^} Cumulative Incremental Backup =========="
@@ -193,28 +195,30 @@ function cumul_backup {
 function diff_backup {
     echo -e "\n========== BEGIN ${BACKUP_TARGET^} Differential Incremental Backup ===========\n"
 
+    sleep 5  # sleep 的目的是为了当 full backup 和 diff backup 同时运行时, diff backup 总是晚于 full backup 运行
+    lock="${backup_to}"/"${backup_target}"/.lock # 简单的文件锁，cumul_backup 通过文件所来确认 full_backup 是否正在运行
     # 1. 检测锁是否存在，如果锁存在，则说明全量备份正在进行，睡眠等待全量备份结束继续备份
-    sleep 5         # sleep 的目的是为了当 full backup 和 diff backup 同时运行时, diff backup 总是晚于 full backup 运行
     while true; do
         if ls "${lock}" &> /dev/null; then 
             echo "full backup is in progress, waiting full backup finished..."
             sleep 10; 
-        else
-            # 基于新的全量备份进行增量备份
-            full_flag="${backup_to}"/"${backup_target}"/.full
-            full_backup_path="$(cat ${full_flag} 2> /dev/null)"
-            diff_backup_path="${full_backup_path}"
-            diff_backup_snap_name="${diff_backup_path}"/"${backup_target}"-"diff.sngz"
-            diff_backup_file_name="${diff_backup_path}"/"${backup_target}"-"diff"-$(date +%d)-$(date +%H%M)".tgz"
-            break
-        fi
+        else break; fi
     done
+
+    # diff_backup 通过 full_backup_snap_name 来确认全量备份是否存在
+    # diff_backup 依赖 full_backup_snap_name 来比对时间戳而进行增量备份
+    full_flag="${backup_to}"/"${backup_target}"/.full
+    full_backup_path="$(cat ${full_flag} 2> /dev/null)"
+    full_backup_snap_name="${full_backup_path}"/"${backup_target}"-"full.sngz"
+    diff_backup_path="${full_backup_path}"
+    diff_backup_snap_name="${diff_backup_path}"/"${backup_target}"-"diff.sngz"
+    diff_backup_file_name="${diff_backup_path}"/"${backup_target}"-"diff"-$(date +%d)-$(date +%H%M)".tgz"
 
     # 2. 检测全量备份是否存在如果不存在，直接跳过备份
     if [[ ! -e "${full_backup_snap_name}" ]]; then
         echo "full backup not exist, skip..."
     else
-        # 差异增量备份和累计增量备份不同，差异增量备份只拷贝一次，累计增量备份开始备份之前都要拷贝一次
+        # cumul_backup 和 diff_backup 不同, cumul_backup 每次备份都要拷贝，diff_backup 只需要拷贝一次
         if [[ ! -e "${diff_backup_snap_name}" ]]; then
             cp "${full_backup_snap_name}" "${diff_backup_snap_name}"; fi
 
