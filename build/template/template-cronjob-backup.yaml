@@ -1,0 +1,73 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: #RESTIC_BACKUP_NAME#
+  namespace: #BACKUP_TARGET_NAMESPACE#
+  labels:
+    app: #RESTIC_BACKUP_NAME#
+    role: backup
+    backup-method: restic
+spec:
+  schedule: "#RESTIC_BACKUP_SCHEDULE#"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: #RESTIC_BACKUP_NAME#
+            role: backup
+            backup-method: restic
+        spec:
+          restartPolicy: Never
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                namespaces:
+                - #BACKUP_TARGET_NAMESPACE#
+                topologyKey: kubernetes.io/hostname 
+          hostname: #RESTIC_BACKUP_NAME#
+          containers:
+          - name: #RESTIC_BACKUP_NAME#
+            image: #RESTIC_BACKUP_IMAGE#
+            imagePullPolicy: IfNotPresent
+            command: ['bash', '-c', '/srv/backup-script-restic.sh backup']
+            lifecycle:
+              preStop:
+                exec:
+                  command: ['bash', '-c', '/srv/restic/clean-script-restic.sh']
+            envFrom:
+            - configMapRef:
+                name: #RESTIC_BACKUP_NAME#-config
+            env:
+            - name: TZ
+              value: 'Asia/Shanghai'
+            - name: RESTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: #RESTIC_BACKUP_NAME#-secret
+                  key: RESTIC_PASSWORD
+            securityContext:
+              privileged: true
+            volumeMounts:
+            - name: backup-script-restic
+              mountPath: /srv/backup-script-restic.sh
+              subPath: backup-script-restic.sh
+            - name: clean-script-restic
+              mountPath: /srv/clean-script-restic.sh
+              subPath: clean-script-restic.sh
+          volumes:
+          - name: backup-script-restic
+            configMap:
+              name: backup-script-restic
+              defaultMode: 0700
+          - name: clean-script-restic
+            configMap:
+              name: clean-script-restic
+              defaultMode: 0700

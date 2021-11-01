@@ -1,0 +1,83 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: restic-init
+  labels:
+    app: restic-init
+    method: restic
+spec:
+  backoffLimit: 2
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app: restic-init
+        method: restic
+    spec:
+      restartPolicy: Never
+      hostname: restic-init
+      containers:
+      - name: restic-init
+        image: #RESTIC_BACKUP_IMAGE#
+        imagePullPolicy: Always
+        command:
+        - bash
+        - -c
+        - /srv/backup-script-restic.sh init
+        env:
+        - name: TZ
+          value: Asia/Shanghai
+        - name: RESTIC_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: #RESTIC_INIT_SECRET#
+              key: RESTIC_PASSWORD
+        envFrom:
+        - configMapRef:
+            name: #RESTIC_INIT_CONFIG#
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - bash
+              - -c
+              - /srv/clean-script-restic.sh
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: backup-script-restic
+          mountPath: /srv/backup-script-restic.sh
+          subPath: backup-script-restic.sh
+        - name: clean-script-restic
+          mountPath: /srv/clean-script-restic.sh
+          subPath: clean-script-restic.sh
+      volumes:
+      - name: backup-script-restic
+        configMap:
+          name: backup-script-restic
+          defaultMode: 0700
+      - name: clean-script-restic
+        configMap:
+          name: clean-script-restic
+          defaultMode: 0700
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-script-restic-config
+  labels:
+    app: restic-init
+    method: restic
+data:
+  RESTIC_REPOSITORY: #RESTIC_REPOSITORY#
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backup-script-restic-secret
+  labels:
+    app: restic-init
+    method: restic
+stringData:
+  RESTIC_PASSWORD: #RESTIC_PASSWORD#

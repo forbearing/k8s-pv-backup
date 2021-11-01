@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: #RESTIC_BACKUP_NAME#-config
+  namespace: #BACKUP_TARGET_NAMESPACE#
+  labels:
+    app: #RESTIC_BACKUP_NAME#
+    role: backup
+    backup-method: restic
+data:
+  BACKUP_FROM: '#BACKUP_TARGET_PVC_LIST#'
+  RESTIC_TAG: '#RESTIC_BACKUP_TARGET_TAG#'
+  RESTIC_REPOSITORY: '#RESTIC_REPOSITORY#'
+  RESTIC_SNAPSHOT_COUNT: '#RESTIC_SNAPSHOT_COUNT#'

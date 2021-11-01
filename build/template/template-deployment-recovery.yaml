@@ -1,0 +1,71 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: #RESTIC_RECOVERY_NAME#
+  namespace: #BACKUP_TARGET_NAMESPACE#
+  labels:
+    app: #RESTIC_RECOVERY_NAME#
+    role: recovery
+    recovery-method: restic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: #RESTIC_RECOVERY_NAME#
+      role: recovery
+      recovery-method: restic
+  template:
+    metadata:
+      labels:
+        app: #RESTIC_RECOVERY_NAME#
+        role: recovery
+        recovery-method: restic
+    spec:
+      hostname: #RESTIC_RECOVERY_NAME#
+      restartPolicy: Always
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+            namespaces:
+            - #BACKUP_TARGET_NAMESPACE#
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - name: #RESTIC_RECOVERY_NAME#
+        image: #RESTIC_BACKUP_IMAGE#
+        imagePullPolicy: Always
+        lifecycle:
+          preStop:
+            exec:
+              command: ['bash', '-c', '/srv/restic/clean-script-restic.sh']
+        envFrom:
+        - configMapRef:
+            name: #RESTIC_BACKUP_NAME#-config
+        env:
+        - name: TZ
+          value: 'Asia/Shanghai'
+        - name: RESTIC_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: #RESTIC_BACKUP_NAME#-secret
+              key: RESTIC_PASSWORD
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: backup-script-restic
+          mountPath: /srv/backup-script-restic.sh
+          subPath: backup-script-restic.sh
+        - name: clean-script-restic
+          mountPath: /srv/clean-script-restic.sh
+          subPath: clean-script-restic.sh
+      volumes:
+      - name: backup-script-restic
+        configMap:
+          name: backup-script-restic
+          defaultMode: 0700
+      - name: clean-script-restic
+        configMap:
+          name: clean-script-restic
+          defaultMode: 0700
