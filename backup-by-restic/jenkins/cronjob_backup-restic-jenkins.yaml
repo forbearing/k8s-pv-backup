@@ -1,0 +1,114 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-restic-jenkins
+  namespace: devops
+  labels:
+    app: backup-restic-jenkins
+    role: backup
+    backup-method: restic
+spec:
+  schedule: "10 */3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: backup-restic-jenkins
+            role: backup
+            backup-method: restic
+        spec:
+          restartPolicy: Never
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                    - jenkins
+                  - key: role
+                    operator: In
+                    values:
+                    - devops
+                namespaces:
+                - devops
+                topologyKey: kubernetes.io/hostname 
+          hostname: backup-restic-jenkins
+          containers:
+          - name: backup-restic-jenkins
+            image: registry.cn-shanghai.aliyuncs.com/hybfkuf/hybfkuf-backup:v1.0
+            imagePullPolicy: IfNotPresent
+            command:
+            - 'bash'
+            - '-c'
+            - '/srv/backup-script-restic.sh'
+            envFrom:
+            - configMapRef:
+                name: backup-restic-jenkins-config
+            env:
+            - name: TZ
+              value: 'Asia/Shanghai'
+            - name: RESTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backup-restic-jenkins-secret
+                  key: RESTIC_PASSWORD
+            securityContext:
+              privileged: true
+            volumeMounts:
+            - name: jenkins-home
+              mountPath: /jenkins-home
+            - name: restic
+              mountPath: /restic
+            - name: rclone
+              mountPath: /rclone
+            - name: rdiff
+              mountPath: /rdiff
+            - name: backup-script-restic
+              mountPath: /srv/backup-script-restic.sh
+              subPath: backup-script-restic.sh
+            - name: backup-script-rclone
+              mountPath: /srv/backup-script-rclone.sh
+              subPath: backup-script-rclone.sh
+            - name: backup-script-rdiff
+              mountPath: /srv/backup-script-rdiff.sh
+              subPath: backup-script-rdiff.sh
+          volumes:
+          - name: jenkins-home
+            persistentVolumeClaim:
+              claimName: jenkins-home
+              readOnly: true
+          - name: restic
+            nfs:
+              server: 10.240.1.21
+              path: /srv/nfs/restic
+              readOnly: false
+          - name: rclone
+            nfs:
+              server: 10.240.1.21
+              path: /srv/nfs/rclone
+              readOnly: false
+          - name: rdiff
+            nfs:
+              server: 10.240.1.21
+              path: /srv/nfs/rdiff
+              readOnly: false
+          - name: backup-script-restic
+            configMap:
+              name: backup-script-restic
+              defaultMode: 0700
+          - name: backup-script-rclone
+            configMap:
+              name: backup-script-rclone
+              defaultMode: 0700
+          - name: backup-script-rdiff
+            configMap:
+              name: backup-script-rdiff
+              defaultMode: 0700

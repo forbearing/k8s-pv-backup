@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-restic-jenkins-config
+  labels:
+    app: backup-restic-jenkins
+    role: backup
+    backup-method: restic
+data:
+  BACKUP_FROM: '/jenkins-home'
+  RESTIC_TAG: 'jenkins'
+  RESTIC_REPOSITORY: '/restic'
+  RESTIC_SNAPSHOT_COUNT: '15'

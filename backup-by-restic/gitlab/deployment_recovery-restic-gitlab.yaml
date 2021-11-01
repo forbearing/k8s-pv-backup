@@ -1,0 +1,121 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recovery-restic-gitlab
+  labels:
+    app: recovery-restic-gitlab
+    role: recovery
+    recovery-method: restic
+spec:
+  replicas: 1
+  #strategy:
+  #  type: Recreate
+  selector:
+    matchLabels:
+      app: recovery-restic-gitlab
+      role: recovery
+      recovery-method: restic
+  template:
+    metadata:
+      labels:
+        app: recovery-restic-gitlab
+        role: recovery
+        recovery-method: restic
+    spec:
+      nodeName: sh-u18-k8s-cicd-worker2
+      hostname: recovery-restic-gitlab
+      restartPolicy: Always
+      #tolerations:
+      #- key: node.kubernetes.io/not-ready
+      #  operator: Exists
+      #  effect: NoExecute
+      #  tolerationSeconds: 10
+      #- key: node.kubernetes.io/unreachable
+      #  operator: Exists
+      #  effect: NoExecute
+      #  tolerationSeconds: 10
+      #affinity:
+      #  podAffinity:
+      #    requiredDuringSchedulingIgnoredDuringExecution:
+      #    - labelSelector:
+      #        matchExpressions:
+      #        - key: app
+      #          operator: In
+      #          values:
+      #          - gitlab
+      #        - key: role
+      #          operator: In
+      #          values:
+      #          - devops
+      #      namespaces:
+      #      - devops
+      #      topologyKey: kubernetes.io/hostname
+      containers:
+      - name: recovery-restic-gitlab
+        image: registry.cn-shanghai.aliyuncs.com/hybfkuf/hybfkuf-backup:v1.0
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: backup-restic-gitlab-config
+        env:
+        - name: TZ
+          value: 'Asia/Shanghai'
+        - name: RESTIC_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: backup-restic-gitlab-secret
+              key: RESTIC_PASSWORD
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: gitlab-data
+          mountPath: /gitlab-data
+        - name: restic
+          mountPath: /restic
+        - name: rclone
+          mountPath: /rclone
+        - name: rdiff
+          mountPath: /rdiff
+        - name: backup-script-restic
+          mountPath: /srv/backup-script-restic.sh
+          subPath: backup-script-restic.sh
+        - name: backup-script-rclone
+          mountPath: /srv/backup-script-rclone.sh
+          subPath: backup-script-rclone.sh
+        - name: backup-script-rdiff
+          mountPath: /srv/backup-script-rdiff.sh
+          subPath: backup-script-rdiff.sh
+      volumes:
+      - name: gitlab-data
+        persistentVolumeClaim:
+          claimName: gitlab-data
+          readOnly: false
+      - name: restic
+        nfs:
+          server: 10.240.1.21
+          #path: /srv/nfs/restic
+          path: /srv/nfs/cicd
+          readOnly: false
+      - name: rclone
+        nfs:
+          server: 10.240.1.21
+          path: /srv/nfs/rclone
+          readOnly: false
+      - name: rdiff
+        nfs:
+          server: 10.240.1.21
+          path: /srv/nfs/rdiff
+          readOnly: false
+      - name: backup-script-restic
+        configMap:
+          name: backup-script-restic
+          defaultMode: 0700
+      - name: backup-script-rclone
+        configMap:
+          name: backup-script-rclone
+          defaultMode: 0700
+      - name: backup-script-rdiff
+        configMap:
+          name: backup-script-rdiff
+          defaultMode: 0700

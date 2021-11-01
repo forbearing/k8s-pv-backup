@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-restic-gitlab-postgresql-config
+  labels:
+    app: backup-restic-gitlab-postgresql
+    role: backup
+    backup-method: restic
+data:
+  BACKUP_FROM: '/gitlab-postgresql-data'
+  RESTIC_TAG: 'gitlab-postgresql'
+  RESTIC_REPOSITORY: '/restic'
+  RESTIC_SNAPSHOT_COUNT: '30'

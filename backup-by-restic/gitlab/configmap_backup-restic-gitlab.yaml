@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-restic-gitlab-config
+  labels:
+    app: backup-restic-gitlab
+    role: backup
+    backup-method: restic
+data:
+  BACKUP_FROM: '/gitlab-data'
+  RESTIC_TAG: 'gitlab'
+  RESTIC_REPOSITORY: '/restic'
+  RESTIC_SNAPSHOT_COUNT: '25'
+  #RESTIC_FORGET_ARGS: '--tag gitlab --path /gitlab-data --keep-last 20'
