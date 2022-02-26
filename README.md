@@ -20,15 +20,11 @@
 
 - 备份工具用的是 [restic](https://github.com/restic/restic)。
 
-## 什么时候传上来
+## 什么时候发出来
 
 我自己先踩坑，差不多够稳定了再发出来。
 
-
-
-
-
-## 介绍
+## 备份
 
 ### 备份类型支持
 
@@ -46,29 +42,3 @@ Differential Incremental: This will backup all changes since last backup - Full 
   - Cumulative Incremental:  更占存储空间，但恢复备份的速度更快
   - Differential Incremental: 占用存储空间相对少，当然恢复备份的速度想对更慢
 ```
-
-### 具体如何恢复，稍等下再写
-
-### Jenkins 备份和恢复测试没问题
-
-### 后续还会增加更多的备份对象、优化通用备份脚本、给通用备份脚本添新功能
-
-- gitlab、jenkins
-- postgresql、gitlab
-- cassandra、redis
-- 等等
-
-### 以后直接做成 helm 包
-
-### 截图
-
-![jenkins_backup_kubectl](docs/pics/jenkins_backup_kubectl_get.png)
-
-<img src="docs/pics/jenkins_backup_kubectl_logs1.png" alt="jenkins_backup_kubectl_logs" style="zoom:80%;" />
-
-<img src="docs/pics/jenkins_backup_kubectl_logs2.png" alt="jenkins_backup_kubectl_logs2" style="zoom:80%;" />
-
-
-
-![jenkins_backup_tree](docs/pics/jenkins_backup_tree.png)
-
