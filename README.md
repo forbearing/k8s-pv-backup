@@ -1,5 +1,9 @@
 
 
+## TODO
+
+- 写一个 Operator，专门用来备份 pvc/pv 中的数据
+
 ## k8s-pv-backup 功能
 
 - 支持将 pv/pvc 中的数据备份到 nfs 存储
